@@ -513,6 +513,36 @@ public:
       return "";
     }
   }
+
+  bp::list getJacobianMatrixPython(bp::list& joint_values)
+  {
+    std::vector<double> v = py_bindings_tools::doubleFromList(joint_values);
+    
+    robot_state::RobotState goal(getRobotModel());
+    goal.setToDefaultValues();
+    auto group = goal.getJointModelGroup(getName());
+    // I'm not sure this is right way...
+    goal.setJointGroupPositions(group, v);
+    for (int i = 0; i < v.size(); ++i)
+    {
+      std::cerr << v[i] << " ";
+    }
+    std::cerr << std::endl;
+    
+    Eigen::MatrixXd jacob = goal.getJacobian(group);
+    bp::list py_mat;
+    for (size_t row = 0; row < jacob.rows(); row++)
+    {
+      bp::list py_row;
+      for (size_t col = 0; col < jacob.cols(); col++)
+      {
+        py_row.append(jacob(row,col));
+      }
+      py_mat.append(py_row);
+    }
+    return py_mat;
+  }
+  
 };
 
 class MoveGroupWrapper : public MoveGroupInterfaceWrapper
@@ -657,6 +687,7 @@ static void wrap_move_group_interface()
   MoveGroupInterfaceClass.def("get_named_targets", &MoveGroupInterfaceWrapper::getNamedTargetsPython);
   MoveGroupInterfaceClass.def("get_named_target_values", &MoveGroupInterfaceWrapper::getNamedTargetValuesPython);
   MoveGroupInterfaceClass.def("get_current_state_bounded", &MoveGroupInterfaceWrapper::getCurrentStateBoundedPython);
+  MoveGroupInterfaceClass.def("get_jacobian_matrix", &MoveGroupInterfaceWrapper::getJacobianMatrixPython);
 
   bp::class_<MoveGroupWrapper, bp::bases<MoveGroupInterfaceWrapper>, boost::noncopyable> MoveGroupClass(
       "MoveGroup", bp::init<std::string, std::string>());
